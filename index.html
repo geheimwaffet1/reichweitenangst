@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reichweitenangst</title>
+  <meta name="description" content="Wie weit kommt dein E-Auto wirklich? Reichweitenrechner, Tipps und Fakten gegen die Reichweitenangst.">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#" class="logo">
+        <span class="logo-mark" aria-hidden="true">⚡</span>
+        Reichweitenangst
+      </a>
+      <nav class="nav" aria-label="Hauptnavigation">
+        <a href="#rechner">Rechner</a>
+        <a href="#karte">Karte</a>
+        <a href="#tipps">Tipps</a>
+        <a href="#fakten">Fakten</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <p class="eyebrow">E-Mobilität ohne Bauchschmerzen</p>
+        <h1>Reichweitenangst?<br><span class="accent">Muss nicht sein.</span></h1>
+        <p class="lead">
+          Wie weit kommt dein E-Auto wirklich – im Winter, auf der Autobahn, mit halbvollem Akku?
+          Rechne es aus und erfahre, wie du entspannt ans Ziel kommst.
+        </p>
+        <a href="#rechner" class="button">Reichweite berechnen</a>
+      </div>
+    </section>
+
+    <section id="rechner" class="section">
+      <div class="container">
+        <h2>Reichweitenrechner</h2>
+        <p class="section-intro">Eine grobe Schätzung auf Basis von Akkugröße, Verbrauch und Bedingungen.</p>
+
+        <div class="calculator">
+          <form id="range-form" class="calc-form">
+            <div class="model-picker">
+              <label class="field">
+                <span class="field-label">Marke</span>
+                <select id="brand">
+                  <option value="">Eigene Werte</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field-label">Modell</span>
+                <select id="model" disabled>
+                  <option value="">Erst Marke wählen</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Nutzbare Akkukapazität <output id="battery-out">60 kWh</output></span>
+              <input type="range" id="battery" min="10" max="140" step="0.1" value="60">
+            </label>
+
+            <label class="field">
+              <span class="field-label">Aktueller Ladestand <output id="soc-out">100 %</output></span>
+              <input type="range" id="soc" min="5" max="100" step="1" value="100">
+            </label>
+
+            <label class="field">
+              <span class="field-label">WLTP-Verbrauch <output id="consumption-out">15 kWh/100 km</output></span>
+              <input type="range" id="consumption" min="9" max="30" step="0.1" value="15">
+            </label>
+
+            <label class="field">
+              <span class="field-label">Außentemperatur <output id="temp-out">15 °C</output></span>
+              <span class="field-hint" id="temp-hint"></span>
+              <input type="range" id="temp" min="-20" max="40" step="1" value="15">
+            </label>
+
+            <label class="field">
+              <span class="field-label">Fahrprofil</span>
+              <select id="profile">
+                <option value="1.0">Stadt (bis 50 km/h)</option>
+                <option value="1.1" selected>Landstraße (bis 100 km/h)</option>
+                <option value="1.3">Autobahn (ca. 120 km/h)</option>
+                <option value="1.6">Autobahn (ca. 150 km/h)</option>
+              </select>
+            </label>
+
+            <label class="field checkbox">
+              <input type="checkbox" id="reserve" checked>
+              <span>10 % Reserve einplanen</span>
+            </label>
+          </form>
+
+          <div class="calc-result" aria-live="polite">
+            <p class="result-label">Geschätzte Reichweite</p>
+            <p class="result-value"><span id="range-km">0</span> km</p>
+            <div class="meter" aria-hidden="true"><div class="meter-fill" id="meter-fill"></div></div>
+            <dl class="result-details">
+              <div><dt>Realer Verbrauch</dt><dd id="real-consumption">–</dd></div>
+              <div><dt>Verfügbare Energie</dt><dd id="energy">–</dd></div>
+            </dl>
+            <p class="result-note" id="result-note"></p>
+          </div>
+        </div>
+        <p class="disclaimer">
+          Alle Werte sind Näherungen. Fahrstil, Steigungen, Wind, Zuladung und Fahrzeugmodell beeinflussen die tatsächliche Reichweite.
+          Fahrzeugdaten: <a href="https://github.com/open-ev-data/open-ev-data-dataset" target="_blank" rel="noopener">OpenEV Data</a><span id="data-info"></span>,
+          WLTP-Verbrauch berechnet aus nutzbarer Akkukapazität und WLTP-Reichweite.
+        </p>
+
+        <div id="karte" class="map-block">
+          <div class="map-header">
+            <div>
+              <h3>Reichweite auf der Karte</h3>
+              <p class="section-intro">Nutze deinen Standort oder klicke auf die Karte, um einen Startpunkt zu setzen.</p>
+            </div>
+            <button type="button" class="button button-small" id="locate">📍 Mein Standort</button>
+          </div>
+          <div id="map" class="map" role="region" aria-label="Karte mit Reichweite"></div>
+          <div class="map-legend">
+            <span><i class="swatch swatch-oneway"></i>Einfache Strecke ca. <strong id="map-oneway">–</strong></span>
+            <span><i class="swatch swatch-return"></i>Hin und zurück ca. <strong id="map-return">–</strong></span>
+            <span class="map-status" id="map-status" aria-live="polite"></span>
+          </div>
+          <p class="disclaimer">
+            Die Kreise zeigen die Luftlinie. Weil Straßen im Schnitt rund 25 % länger sind als die direkte Verbindung, ist der Radius entsprechend kleiner als die berechnete Fahrstrecke.
+            Kartendaten © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tipps" class="section section-alt">
+      <div class="container">
+        <h2>Tipps für mehr Reichweite</h2>
+        <div class="cards">
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🌡️</span>
+            <h3>Vorkonditionieren</h3>
+            <p>Heize Innenraum und Akku vor, solange das Auto noch am Ladekabel hängt. So kommt die Energie aus dem Netz statt aus dem Akku.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🛣️</span>
+            <h3>Tempo rausnehmen</h3>
+            <p>Der Luftwiderstand steigt mit dem Quadrat der Geschwindigkeit. 120 statt 150 km/h spart oft spürbar Energie – und kostet kaum Zeit.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🔁</span>
+            <h3>Rekuperation nutzen</h3>
+            <p>Vorausschauend fahren und das Auto beim Verzögern Energie zurückgewinnen lassen, statt mechanisch zu bremsen.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🛞</span>
+            <h3>Reifendruck prüfen</h3>
+            <p>Zu wenig Luft erhöht den Rollwiderstand. Ein kurzer Check an der Tankstelle lohnt sich regelmäßig.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🗺️</span>
+            <h3>Ladestopps planen</h3>
+            <p>Nutze die Routenplanung im Auto oder eine Lade-App. Wer den nächsten Stopp kennt, fährt deutlich entspannter.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🔋</span>
+            <h3>Schnell laden im Sweet Spot</h3>
+            <p>Zwischen etwa 10 und 80 % lädt ein Akku am schnellsten. Lieber zweimal kurz als einmal bis 100 % laden.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="fakten" class="section">
+      <div class="container">
+        <h2>Fakten statt Bauchgefühl</h2>
+        <div class="facts">
+          <div class="fact">
+            <p class="fact-value">&lt; 50 km</p>
+            <p class="fact-text">So lang sind die allermeisten Alltagsfahrten – weit unter der Reichweite heutiger E-Autos.</p>
+          </div>
+          <div class="fact">
+            <p class="fact-value">10–80 %</p>
+            <p class="fact-text">In diesem Bereich laden viele aktuelle Modelle am Schnelllader in rund 20 bis 40 Minuten.</p>
+          </div>
+          <div class="fact">
+            <p class="fact-value">20–30 %</p>
+            <p class="fact-text">So viel Reichweite kann bei Frost verloren gehen – vor allem auf kurzen Strecken mit viel Heizen.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section section-alt">
+      <div class="container narrow">
+        <h2>Häufige Fragen</h2>
+        <details>
+          <summary>Warum weicht die reale Reichweite von der WLTP-Angabe ab?</summary>
+          <p>Der WLTP-Zyklus ist ein standardisierter Labortest mit moderaten Geschwindigkeiten und milden Temperaturen. Autobahnfahrten, Kälte und Klimatisierung erhöhen den Verbrauch im Alltag.</p>
+        </details>
+        <details>
+          <summary>Was passiert, wenn der Akku wirklich leer wird?</summary>
+          <p>Lange vorher warnt das Auto und reduziert die Leistung. Die meisten Hersteller planen zudem eine kleine Reserve unterhalb von 0 % ein. Trotzdem gilt: rechtzeitig laden ist die bessere Idee.</p>
+        </details>
+        <details>
+          <summary>Schadet häufiges Schnellladen dem Akku?</summary>
+          <p>Moderne Akkus sind dafür ausgelegt. Wer im Alltag überwiegend langsam lädt und den Ladestand meist zwischen 20 und 80 % hält, schont die Batterie zusätzlich.</p>
+        </details>
+        <details>
+          <summary>Wie genau ist der Rechner auf dieser Seite?</summary>
+          <p>Er liefert eine Orientierung. Für konkrete Fahrten ist der Routenplaner deines Fahrzeugs genauer, weil er Höhenprofil, Wetter und deinen Fahrstil kennt.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© <span id="year"></span> Reichweitenangst · Mit Gelassenheit elektrisch unterwegs</p>
+      <p>Fahrzeugdaten: <a href="https://github.com/open-ev-data/open-ev-data-dataset" target="_blank" rel="noopener">OpenEV Data</a>, <a href="data/LICENSE-open-ev-data.txt">CDLA-Permissive-2.0</a></p>
+      <p><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a></p>
+    </div>
+  </footer>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="script.js"></script>
+  <script src="map.js"></script>
+</body>
+</html>
